@@ -1,0 +1,389 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  CLIENT
+  BROKER
+  DEVELOPER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum AdStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+  ENDED
+}
+
+enum OfferStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum PaymentKind {
+  BOOKING
+  SUBSCRIPTION
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  SUPPORT
+  FINANCE
+}
+
+model User {
+  id           String     @id @default(cuid())
+  phone        String     @unique
+  name         String
+  role         Role
+  passwordHash String
+  status       UserStatus @default(ACTIVE)
+  statusNote   String?
+  subscribed   Boolean    @default(false)
+  avatarUrl    String?
+  tokenVersion Int        @default(0)
+  failedLogins Int        @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  properties Property[]
+  offers     Offer[]
+  favorites  Favorite[]
+  payments   Payment[]
+  threadsA   Thread[]   @relation("ThreadA")
+  threadsB   Thread[]   @relation("ThreadB")
+  messages   Message[]
+  reports    Report[]
+  tickets    SupportTicket[]
+
+  @@index([role, status])
+  @@index([createdAt])
+}
+
+model Property {
+  id           String   @id @default(cuid())
+  ownerId      String
+  owner        User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  kind         String
+  rooms        Int
+  baths        Int
+  area         Int
+  price        Int
+  minOffer     Int
+  commission   Int
+  district     String
+  city         String   @default("جدة")
+  description  String
+  facade       String   @default("front")
+  direction    String   @default("")
+  view         String   @default("city")
+  maid         Boolean  @default(false)
+  driver       Boolean  @default(false)
+  parking      Boolean  @default(true)
+  floors       Json
+  guarantees   Json
+  amenities    Json
+  infra        Json
+  photos       Json
+  lat          Float    @default(21.54)
+  lng          Float    @default(39.17)
+  status       AdStatus @default(PENDING)
+  rejectReason String?
+  featured     Boolean  @default(false)
+  hiddenUntil  DateTime?
+  soldTo       String?
+  publishedAt  DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  offers    Offer[]
+  favorites Favorite[]
+  reports   Report[]
+  threads   Thread[]
+
+  @@index([status, createdAt])
+  @@index([ownerId])
+  @@index([district])
+}
+
+model Offer {
+  id          String      @id @default(cuid())
+  propertyId  String
+  property    Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  byUserId    String
+  byUser      User        @relation(fields: [byUserId], references: [id], onDelete: Cascade)
+  clientName  String
+  clientPhone String
+  floor       String
+  amount      Int
+  status      OfferStatus @default(PENDING)
+  note        String?
+  decidedAt   DateTime?
+  createdAt   DateTime    @default(now())
+  payment     Payment?
+
+  @@index([propertyId])
+  @@index([byUserId])
+  @@index([status, createdAt])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userPhone   String?
+  kind        PaymentKind
+  amount      Int
+  vat         Int
+  total       Int
+  status      PaymentStatus @default(PENDING)
+  provider    String        @default("demo")
+  providerRef String?
+  offerId     String?       @unique
+  offer       Offer?        @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  note        String?
+  refundedAt  DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model Favorite {
+  userId     String
+  propertyId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([userId, propertyId])
+}
+
+model Thread {
+  id         String    @id @default(cuid())
+  aId        String
+  a          User      @relation("ThreadA", fields: [aId], references: [id], onDelete: Cascade)
+  bId        String?
+  b          User?     @relation("ThreadB", fields: [bId], references: [id], onDelete: Cascade)
+  peerName   String
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  blockedBy  String?
+  deletedBy  String[]  @default([])
+  locked     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  messages   Message[]
+  reports    Report[]
+
+  @@index([aId])
+  @@index([bId])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  threadId  String
+  thread    Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  text      String    @default("")
+  fileUrl   String    @default("")
+  edited    Boolean   @default(false)
+  deleted   Boolean   @default(false)
+  flagged   Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+model Report {
+  id           String       @id @default(cuid())
+  propertyId   String?
+  property     Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  threadId     String?
+  thread       Thread?      @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  reporterId   String?
+  reporter     User?        @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  reason       String
+  details      String?
+  status       ReportStatus @default(OPEN)
+  resolution   String?
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@index([status, createdAt])
+}
+
+model SupportTicket {
+  id        String       @id @default(cuid())
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contact   String?
+  subject   String
+  body      String
+  status    TicketStatus @default(OPEN)
+  reply     String?
+  repliedBy String?
+  repliedAt DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([status, createdAt])
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  sort      Int     @default(0)
+  qAr       String
+  aAr       String
+  qEn       String
+  aEn       String
+  published Boolean @default(true)
+}
+
+model Page {
+  key       String   @id
+  titleAr   String
+  titleEn   String
+  bodyAr    String
+  bodyEn    String
+  updatedAt DateTime @updatedAt
+}
+
+model News {
+  id          String    @id @default(cuid())
+  titleAr     String
+  titleEn     String
+  bodyAr      String
+  bodyEn      String
+  imageUrl    String?
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model District {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  nameEn String?
+  lat    Float
+  lng    Float
+  active Boolean @default(true)
+}
+
+model PropertyType {
+  key     String  @id
+  kind    String
+  rooms   Int
+  plus    Boolean @default(false)
+  labelAr String
+  labelEn String
+  active  Boolean @default(true)
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model Announcement {
+  id        String    @id @default(cuid())
+  titleAr   String
+  titleEn   String
+  bodyAr    String
+  bodyEn    String
+  audience  String    @default("ALL")
+  level     String    @default("INFO")
+  active    Boolean   @default(true)
+  startsAt  DateTime  @default(now())
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole
+  active       Boolean   @default(true)
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  tokenVersion Int       @default(0)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  adminId   String?
+  adminName String
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+}
+
+model OtpCode {
+  id        String    @id @default(cuid())
+  phone     String
+  purpose   String
+  codeHash  String
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([phone, purpose, createdAt])
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
+}

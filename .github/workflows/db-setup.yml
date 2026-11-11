@@ -1,0 +1,42 @@
+name: Database setup (Neon)
+
+# يشغَّل يدويًا: ينشئ الجداول على Neon وينشئ أول مدير ومحتوى البداية.
+# يحتاج Secrets: DATABASE_URL, DIRECT_URL, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD (12+ حرفًا)
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "أنشئ أول مدير ومحتوى البداية (Seed)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: admin
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL }}
+      SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
+      SEED_ADMIN_NAME: ${{ secrets.SEED_ADMIN_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check secrets
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$DIRECT_URL" ]; then echo "::error::Missing DATABASE_URL / DIRECT_URL secrets"; exit 1; fi
+      - run: npm install --no-audit --no-fund
+      - name: Create tables
+        run: npx prisma db push --skip-generate
+      - name: Seed
+        if: ${{ inputs.seed }}
+        run: npx tsx prisma/seed.ts

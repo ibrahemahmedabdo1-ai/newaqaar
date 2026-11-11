@@ -1,0 +1,40 @@
+name: Admin panel CI
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ "admin/**", ".github/workflows/admin-ci.yml" ]
+  pull_request:
+    paths: [ "admin/**" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Typecheck + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: admin
+    env:
+      # قيم وهمية للبناء فقط (لا تُستخدم للاتصال)
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db?schema=public"
+      DIRECT_URL: "postgresql://user:pass@localhost:5432/db?schema=public"
+      ADMIN_JWT_SECRET: "ci-only-secret-ci-only-secret-ci-only-1234"
+      API_JWT_SECRET: "ci-only-secret-ci-only-secret-ci-only-5678"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Prisma generate
+        run: npx prisma generate
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build
+        run: npx next build

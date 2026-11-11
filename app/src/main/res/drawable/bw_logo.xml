@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- شعار مبدئي. للشعار الرسمي: ضع branding/logo.png وسيحل محله تلقائيًا عند البناء (انظر branding/README.md) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFEDD3"
+        android:pathData="M30,84 L30,40 Q30,22 48,22 L54,22 L54,84 Z M38,76 L46,76 L46,32 Q38,32 38,42 Z" />
+    <path android:fillColor="#FFFFEDD3"
+        android:pathData="M60,22 L66,22 Q78,22 78,34 Q78,42 72,46 Q80,50 80,60 Q80,84 66,84 L60,84 Z M68,32 L68,42 Q70,42 70,37 Q70,32 68,32 Z M68,54 L68,76 Q72,76 72,65 Q72,54 68,54 Z" />
+</vector>

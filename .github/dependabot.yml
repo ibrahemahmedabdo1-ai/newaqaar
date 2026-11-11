@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # تحديثات أمنية وإصدارات لوحة التحكم (Next.js وغيرها)
+  - package-ecosystem: "npm"
+    directory: "/admin"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      security-and-minor:
+        update-types: ["minor", "patch"]
+  # مكتبات الأندرويد
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+  # أدوات GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
